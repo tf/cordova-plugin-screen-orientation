@@ -23,85 +23,28 @@ SOFTWARE.
  */
 #import "YoikScreenOrientation.h"
 
+static UIInterfaceOrientationMask _allowedOrientations = UIInterfaceOrientationMaskPortrait;
+
 @implementation YoikScreenOrientation
+
++ (UIInterfaceOrientationMask) allowedOrientations {
+    return _allowedOrientations;
+}
 
 -(void)screenOrientation:(CDVInvokedUrlCommand *)command
 {
     [self.commandDelegate runInBackground:^{
-
         NSArray* arguments = command.arguments;
-        NSString* orientationIn = [arguments objectAtIndex:1];
-
-        // grab the device orientation so we can pass it back to the js side.
-        NSString *orientation;
-        switch ([[UIDevice currentDevice] orientation]) {
-            case UIDeviceOrientationLandscapeLeft:
-                orientation = @"landscape-secondary";
-                break;
-            case UIDeviceOrientationLandscapeRight:
-                orientation = @"landscape-primary";
-                break;
-            case UIDeviceOrientationPortrait:
-                orientation = @"portrait-primary";
-                break;
-            case UIDeviceOrientationPortraitUpsideDown:
-                orientation = @"portrait-secondary";
-                break;
-            default:
-                orientation = @"portait";
-                break;
+        NSString* orientation = [arguments objectAtIndex:1];
+        
+        if ([orientation rangeOfString:@"portrait"].location != NSNotFound) {
+          _allowedOrientations = UIInterfaceOrientationMaskPortrait;
+        } else if([orientation rangeOfString:@"landscape"].location != NSNotFound) {
+          _allowedOrientations = UIInterfaceOrientationMaskLandscape;
+        } else {
+          _allowedOrientations = UIInterfaceOrientationMaskAll;
         }
-
-        if ([orientationIn isEqual: @"unlocked"]) {
-            orientationIn = orientation;
-        }
-
-        // we send the result prior to the view controller presentation so that the JS side
-        // is ready for the unlock call.
-        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
-            messageAsDictionary:@{@"device":orientation}];
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-
-        // SEE https://github.com/Adlotto/cordova-plugin-recheck-screen-orientation
-        // HACK: Force rotate by changing the view hierarchy. Present modal view then dismiss it immediately
-        // This has been changed substantially since iOS8 broke it...
-        ForcedViewController *vc = [[ForcedViewController alloc] init];
-        vc.calledWith = orientationIn;
-
-        // backgound should be transparent as it is briefly visible
-        // prior to closing.
-        vc.view.backgroundColor = [UIColor clearColor];
-        // vc.view.alpha = 0.0;
-        vc.view.opaque = YES;
-
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 80000
-        // This stops us getting the black application background flash, iOS8
-        vc.modalPresentationStyle = UIModalPresentationOverFullScreen;
-#endif
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self.viewController presentViewController:vc animated:NO completion:^{
-                // added to support iOS8 beta 5, @see issue #19
-                dispatch_after(0, dispatch_get_main_queue(), ^{
-                    [self.viewController dismissViewControllerAnimated:NO completion:nil];
-                });
-            }];
-        });
-
     }];
 }
 
-@end
-
-@implementation ForcedViewController
-
-- (UIInterfaceOrientationMask) supportedInterfaceOrientations
-{
-    if ([self.calledWith rangeOfString:@"portrait"].location != NSNotFound) {
-        return UIInterfaceOrientationMaskPortrait;
-    } else if([self.calledWith rangeOfString:@"landscape"].location != NSNotFound) {
-        return UIInterfaceOrientationMaskLandscape;
-    }
-    return UIInterfaceOrientationMaskAll;
-}
 @end
