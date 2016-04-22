@@ -28,7 +28,12 @@ static UIInterfaceOrientationMask _allowedOrientations = UIInterfaceOrientationM
 @implementation YoikScreenOrientation
 
 + (UIInterfaceOrientationMask) allowedOrientations {
-    return _allowedOrientations;
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        return UIInterfaceOrientationMaskAll;
+    }
+    else {
+        return _allowedOrientations;
+    }
 }
 
 -(void)screenOrientation:(CDVInvokedUrlCommand *)command
